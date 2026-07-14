@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rm -f \"/Users/aaron/Library/CloudStorage/OneDrive-UW/ag-buffer/\"repro_test*.md /tmp/repro_test*.md)",
+      "Bash(nvim --headless -u init.lua -c enew -c 'normal! ihello world' -c 'w mytest_repro.md' -c qa!)",
+      "Read(//private/tmp/**)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c enew -c 'normal! ihello world' -c 'w /tmp/mytest_repro.md' -c qa!)",
+      "Bash(grep -iE \"repro|$\\(date +%Y-%m-%d\\)\")",
+      "Bash(rm -f \"/Users/aaron/Library/CloudStorage/OneDrive-UW/ag-buffer/\"repro2*.md)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c enew -c 'normal! ihello world' -c pwd -c 'w repro2_manual.md' -c qa!)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c \"lua print\\(vim.o.directory\\)\" -c \"qa!\")",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c \"lua io.write\\(vim.fn.stdpath\\('state'\\)\\)\" -c \"qa!\")",
+      "Bash(ls -la \"$\\(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c \"lua io.write\\(vim.fn.stdpath\\('state'\\)\\)\" -c \"qa!\" \\)/swap\")",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua +qa)",
+      "Bash(rm -f /Users/aaron/Library/CloudStorage/OneDrive-UW/ag-buffer/sanity_check.md)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c enew -c 'normal! isanity check content' -c 'w /Users/aaron/Library/CloudStorage/OneDrive-UW/ag-buffer/sanity_check.md' -c 'sleep 700m' -c qa!)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c 'lua require\\('\\\\''config.AG-autosave'\\\\''\\).setup\\(\\)' -c 'lua require\\('\\\\''config.AG-autosave'\\\\''\\).setup\\(\\)' -c 'lua print\\('\\\\''autocmd count in group: '\\\\'' .. #vim.api.nvim_get_autocmds\\({group = '\\\\''AGAutosave'\\\\''}\\)\\)' -c qa!)",
+      "Bash(cat)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c \"luafile /tmp/test_reload.lua\" -c \"qa!\")",
+      "Bash(rm /tmp/test_reload.lua)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c enew -c 'lua vim.api.nvim_buf_set_lines\\(0, 0, -1, false, {'\\\\''hello'\\\\''}\\)' -c 'lua vim.api.nvim_exec_autocmds\\('\\\\''TextChangedI'\\\\'', {buffer = 0}\\)' -c 'lua print\\('\\\\''cwd after auto-persist: '\\\\'' .. vim.fn.getcwd\\(\\)\\)' -c qa!)",
+      "Bash(rm -f \"/Users/aaron/Library/CloudStorage/OneDrive-UW/ag-buffer/2026-07-08_0051\"*.md)",
+      "Bash(echo \"original content\")",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c 'edit /tmp/ag_autosave_timer_test.md' -c 'normal! Goappended line' -c 'sleep 6' -c qa!)",
+      "Read(//tmp/**)",
+      "Bash(rm -f /tmp/ag_autosave_timer_test.md)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c 'lua require\\('\\\\''config.AG-autosave'\\\\''\\).setup\\(\\)' -c 'lua require\\('\\\\''config.AG-autosave'\\\\''\\).setup\\(\\)' -c 'lua print\\('\\\\''no error calling setup\\(\\) 3x total, timer handle: '\\\\'' .. tostring\\(_G.__ag_autosave_timer\\)\\)' -c qa!)",
+      "Bash(echo \"original\")",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c 'edit /tmp/ag_debounce_test.md' -c 'normal! Gofirst edit' -c 'sleep 2' -c 'lua print\\('\\\\''after 2s \\(should be unmodified-save NOT yet fired\\): modified='\\\\'' .. tostring\\(vim.bo.modified\\)\\)' -c 'normal! oSECOND edit' -c 'sleep 2' -c 'lua print\\('\\\\''2s after 2nd edit \\(debounce should have reset, still pending\\): modified='\\\\'' .. tostring\\(vim.bo.modified\\)\\)' -c 'sleep 4' -c 'lua print\\('\\\\''4s more \\(total 6s since 2nd edit\\) - should now be saved: modified='\\\\'' .. tostring\\(vim.bo.modified\\)\\)' -c qa!)",
+      "Bash(rm -f /tmp/ag_debounce_test.md)",
+      "Bash(rm -f /tmp/ag_debounce_test2.md /tmp/ag_debounce_test2.log)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c 'edit /tmp/ag_debounce_test2.md' -c 'lua vim.api.nvim_create_autocmd\\('\\\\''BufWritePost'\\\\'', {callback = function\\(\\) local f = io.open\\('\\\\''/tmp/ag_debounce_test2.log'\\\\'','\\\\''a'\\\\''\\); f:write\\(os.time\\(\\) .. '\\\\'' WRITE\\\\n'\\\\''\\); f:close\\(\\) end}\\)' -c 'lua local f = io.open\\('\\\\''/tmp/ag_debounce_test2.log'\\\\'','\\\\''a'\\\\''\\); f:write\\(os.time\\(\\) .. '\\\\'' start, first edit\\\\n'\\\\''\\); f:close\\(\\)' -c 'normal! Gofirst edit' -c 'sleep 2' -c 'lua local f = io.open\\('\\\\''/tmp/ag_debounce_test2.log'\\\\'','\\\\''a'\\\\''\\); f:write\\(os.time\\(\\) .. '\\\\'' t+2s, second edit\\\\n'\\\\''\\); f:close\\(\\)' -c 'normal! oSECOND edit' -c 'sleep 2' -c 'lua local f = io.open\\('\\\\''/tmp/ag_debounce_test2.log'\\\\'','\\\\''a'\\\\''\\); f:write\\(os.time\\(\\) .. '\\\\'' t+4s \\(2s after 2nd edit\\)\\\\n'\\\\''\\); f:close\\(\\)' -c 'sleep 4' -c 'lua local f = io.open\\('\\\\''/tmp/ag_debounce_test2.log'\\\\'','\\\\''a'\\\\''\\); f:write\\(os.time\\(\\) .. '\\\\'' t+8s \\(6s after 2nd edit\\)\\\\n'\\\\''\\); f:close\\(\\)' -c qa!)",
+      "Bash(nvim --headless -u /Users/aaron/.config/nvim/init.lua -c 'edit /tmp/ag_insertleave_test.md' -c 'normal! Goinserted text\\\\x1b' -c 'lua print\\('\\\\''immediately after <Esc>: modified='\\\\'' .. tostring\\(vim.bo.modified\\)\\)' -c qa!)",
+      "Bash(rm -f /tmp/ag_insertleave_test.md)"
+    ]
+  }
+}
