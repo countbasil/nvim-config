@@ -1,5 +1,6 @@
 {
   "lazy.nvim": { "branch": "main", "commit": "306a05526ada86a7b30af95c5cc81ffba93fef97" },
+  "mini.move": { "branch": "main", "commit": "48fcaac289a19b8eff2fd5fe203267d478a8abdc" },
   "snacks.nvim": { "branch": "main", "commit": "882c996cf28183f4d63640de0b4c02ec886d01f2" },
   "vim-table-mode": { "branch": "master", "commit": "bb025308a45c67c7c8f0763ba37bc2ee3f534df0" }
 }

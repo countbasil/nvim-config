@@ -65,6 +65,38 @@ vim.keymap.set('i', '<End>', '<C-o>$', { remap = true })
 -- always land at the start of the line.
 vim.opt.startofline = true
 
+-- G (no count) overrides that, deliberately: it should land on the very
+-- last character of the whole document, not the last line's first
+-- non-blank — "go to the end" reasonably means the actual end. Counted G
+-- (e.g. 5G, jump to line 5) is left alone and still honors 'startofline'
+-- above; "last char of the document" is inherently a no-count concept, a
+-- specific line isn't "the document".
+--
+-- vim.v.count is 0 (not nil) when no count was given. `normal!` (bang, not
+-- bare `normal`) bypasses ALL custom mappings for both the G and the
+-- trailing $: G itself isn't remapped elsewhere in this file, but the
+-- trailing $ specifically needs the bypass to reach Vim's TRUE raw $
+-- (logical end of line) rather than this file's own swapped meaning
+-- (display-row end, top of this file) — same bypass technique already
+-- used for Cmd+Up/Down and ^E elsewhere in this file.
+--
+-- n and v only, deliberately NOT o (operator-pending): tried n/v/o
+-- together first, but dG came out corrupted (confirmed via headless
+-- testing — deleted almost the whole buffer except a stray leftover
+-- character). Combining a linewise jump (G) with a charwise refinement
+-- ($) inside one Operator-pending callback confuses Vim's motion-type
+-- inference for the resulting operator range. The actual ask here was
+-- about cursor navigation, not about redefining what dG/yG operate over,
+-- so Operator-pending G is left completely untouched (vanilla behavior)
+-- rather than chasing that fragility for a case nobody asked for.
+vim.keymap.set({ 'n', 'v' }, 'G', function()
+  if vim.v.count == 0 then
+    vim.cmd('normal! G$')
+  else
+    vim.cmd('normal! ' .. vim.v.count .. 'G')
+  end
+end)
+
 -- Also adding these so can move across paragraphs with left/right arrows!
 vim.opt.whichwrap:append("h,l,<,>,[,]")
 
