@@ -56,5 +56,6 @@ return {
     { "<Leader>fr", function() Snacks.picker.recent() end, desc = "Recent Files" },
     { "<Leader>fg", function() Snacks.picker.grep() end, desc = "Grep (live)" },
     { "<Leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
+    { "<Leader>fe", function() Snacks.picker.explorer() end, desc = "File Explorer" },
   },
 }

@@ -1,0 +1,52 @@
+-- =============================================================
+-- Normal-mode Enter/Backspace: repurposing otherwise-low-value defaults
+-- =============================================================
+-- Vanilla Normal-mode <CR> (move to next line's first non-blank) and <BS>
+-- (move left, i.e. same as `h`) are both largely redundant with other keys
+-- already in constant use, so — a common convention, not unique to this
+-- config — they're repurposed here for editing actions instead, added at
+-- Aaron's explicit request 2026-07-18:
+--   - <CR>: split the line at the cursor and stay in Insert mode
+--     afterward (i.e. "press i, then press Enter" — NOT the "split and
+--     immediately <Esc> back to Normal" variant some people prefer).
+--   - <BS>: delete the character before the cursor, staying in Normal
+--     mode (i.e. Insert mode's Backspace, without entering Insert mode).
+--
+-- Forward-delete deliberately has NO mapping here: unmapped Normal-mode
+-- <Del> already deletes the character under the cursor while staying in
+-- Normal mode (confirmed via headless test 2026-07-18 — it's Vim's actual
+-- built-in default, equivalent to `x`), so it already does exactly what
+-- was asked for with nothing to add.
+--
+-- Both mappings below rely on vim.keymap.set's default `remap = false`
+-- (non-recursive): the RHS keys are sent straight to Vim's real
+-- underlying handlers, bypassing any OTHER mapping table for those same
+-- keys (including ones that only exist in certain buffers) — exactly the
+-- guarantee wanted here, so a future Insert-mode <CR> mapping (say) can't
+-- unexpectedly hijack what these two do.
+--
+-- Applies in markdown/text buffers too, not just other filetypes: autolist.nvim
+-- (lua/plugins/autolist.lua) used to buffer-locally map Normal-mode <CR> to
+-- toggle a checkbox there, which — being buffer-local — would otherwise have
+-- shadowed this global mapping. Removed 2026-07-18 at Aaron's explicit choice
+-- (asked because markdown/text is this repo's primary use case, and losing
+-- the checkbox-toggle shortcut was a real trade-off, not a given) so <CR>
+-- behaves identically everywhere; see autolist.lua for what replaced it
+-- (nothing — checkbox toggling is still reachable via
+-- `:AutolistToggleCheckbox`, just without a dedicated key).
+
+-- <CR>: enter Insert mode and insert a newline at the cursor, remaining in
+-- Insert mode. No trailing <Esc> — deliberately, per the "stay in Insert
+-- mode" ask above.
+vim.keymap.set('n', '<CR>', 'i<CR>', { desc = "Split line at cursor, stay in Insert mode" })
+
+-- <BS>: Vim's own `X` command already does exactly "delete the character
+-- before the cursor, stay in Normal mode" — no custom function needed
+-- (unlike `dr` in AG-display-line-based-navigation.lua, which had no
+-- built-in equivalent to reuse). `X`'s own existing behavior is kept
+-- as-is, including its edge cases: a no-op at column 1 (does NOT join
+-- with the previous line, unlike Insert-mode Backspace at the start of a
+-- line) and register behavior matching a normal characterwise delete
+-- (writes "" and "-, not "1-"9) — both inherited for free by pointing at
+-- the real command rather than reimplementing it.
+vim.keymap.set('n', '<BS>', 'X', { desc = "Delete character before cursor, stay in Normal mode" })

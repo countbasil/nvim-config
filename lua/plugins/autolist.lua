@@ -53,12 +53,22 @@ return {
         -- (staying in Insert mode afterward, same as vanilla o/O) — <Cmd>
         -- mappings run the Ex command without leaving the current mode, so
         -- no <C-o> round trip is needed, unlike some other insert-mode
-        -- mappings elsewhere in this config. <CR> toggles a checkbox under
-        -- the cursor; <C-r> force-recalculates list numbering (useful
-        -- after a manual edit autolist didn't automatically catch).
+        -- mappings elsewhere in this config. <C-r> force-recalculates list
+        -- numbering (useful after a manual edit autolist didn't
+        -- automatically catch).
+        --
+        -- Deliberately NOT mapping <CR> here (previously bound to
+        -- AutolistToggleCheckbox): as of 2026-07-18, Normal-mode <CR> is
+        -- meant to behave the same across ALL filetypes (split line, stay
+        -- in Insert — see AG-normal-mode-editing.lua), and a buffer-local
+        -- mapping here would shadow that global one for exactly the
+        -- markdown/text filetypes that are this repo's primary use case.
+        -- Checkbox toggling is still available via
+        -- `:AutolistToggleCheckbox`, just without a dedicated key, at
+        -- Aaron's explicit choice of the "full override" option over
+        -- keeping/relocating a dedicated toggle key.
         vim.keymap.set("n", "o", "o<Cmd>AutolistNewBullet<CR>", opts)
         vim.keymap.set("n", "O", "O<Cmd>AutolistNewBulletBefore<CR>", opts)
-        vim.keymap.set("n", "<CR>", "<Cmd>AutolistToggleCheckbox<CR><CR>", opts)
         vim.keymap.set("n", "<C-r>", "<Cmd>AutolistRecalculate<CR>", opts)
 
         -- Keep list numbering correct after deleting a line or

@@ -113,6 +113,40 @@ function M.setup()
   })
 
   -- ---------------------------------------------------------
+  -- Final safety net: flush any pending autosave immediately when
+  -- Neovim is about to exit, instead of leaving it to the 5s debounce.
+  --
+  -- Added 2026-08-09 after investigating a real data-loss report (the
+  -- last few seconds of typing in a buffer were missing after a VimR
+  -- restart). Evidence pointed at a genuine gap here, not a fluke: a
+  -- leftover, undeleted .swp file for that buffer (Neovim always
+  -- deletes its own swapfile on a clean exit, so a surviving one means
+  -- the previous session ended abruptly) and no VimLeavePre/ExitPre
+  -- autocmd anywhere in this module to force a final write before
+  -- exiting. Without one, an edit landing inside the 5s debounce window
+  -- (with no intervening InsertLeave/FocusLost — e.g. quitting straight
+  -- out of Insert mode) was only saved if nothing interrupted that
+  -- 5-second wait. This can't help against a true crash or `kill -9` —
+  -- no autocmd fires for those, by definition — but it closes the more
+  -- common gap of a normal `:qa`/Cmd+Q racing the debounce.
+  --
+  -- `:wall` (not a loop calling autosave() per buffer) covers every
+  -- modified, already-named buffer in one call, matching Vim's own
+  -- built-in "save everything" semantics. Unnamed buffers don't need
+  -- separate handling here: persist_new_buffer() below already gives a
+  -- new buffer a real filename on its very first edit, so by the time
+  -- VimLeavePre fires any buffer with actual content already has one.
+  -- ---------------------------------------------------------
+  vim.api.nvim_create_autocmd('VimLeavePre', {
+    group = augroup,
+    callback = function()
+      cancel_pending_autosave()
+      pcall(vim.cmd, 'silent! wall')
+    end,
+    desc = 'Flush any pending autosave before Neovim exits',
+  })
+
+  -- ---------------------------------------------------------
   -- Auto-persist brand-new unnamed buffers on first edit.
   --
   -- Fires immediately on the first character typed (not throttled like

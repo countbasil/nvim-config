@@ -12,6 +12,9 @@ require("config.AG-titlecase").setup()  -- * title case function [maps to `gl`]
 -- my display-line [vs file-line] navigation (incl display-line def for `dr`)
 require('config.AG-display-line-based-navigation')
 
+-- Normal-mode <CR> (split line, stay in Insert) / <BS> (delete char, stay in Normal)
+require('config.AG-normal-mode-editing')
+
 -- personal augmentations to vim-table-mode (e.g. Tab/S-Tab cell nav)
 require('config.AG-table-augmentation')
 
@@ -42,9 +45,13 @@ package.path = config_lua_path .. '/?.lua;' .. config_lua_path .. '/?/init.lua;'
 -----------------------------
 -- NOTABLE LEADER-KEY FUNCTIONS:
 --  - rc = reload config
---  - cd = change explorer's dir to current file's dir
+--  - cd = change global working directory to current file's dir (affects
+--         every window/tab in this Neovim instance that doesn't already
+--         have its own `:lcd` override, e.g. via autocmds.lua's auto-lcd;
+--         does NOT change where already-open buffers in other windows save)
 --  - w = word wrap toggle
 --  - l = clear search highlight + redraw screen
+--  - d = delete (Normal-mode operator or Visual selection) without yanking
 --
 --  [From other files]
 --  - t* = table mode functions [table-mode plug-in & AG-table-augmentation config]
@@ -68,7 +75,17 @@ vim.keymap.set('n', '<Leader>rc', function()
   print("Config reloaded!")
 end, { desc = "Reload config" })
 
--- cd = change file explorer directory to current 
+-- cd = change Neovim's global working directory to the current file's
+-- folder. Global (`:cd`, not `:lcd`/`:tcd`), so it applies instance-wide —
+-- but windows already showing a real file already have their own `:lcd`
+-- override from autocmds.lua's auto-lcd-on-BufEnter, which takes
+-- precedence over this global value for them. In practice this mainly
+-- matters for windows without a file loaded yet (empty/scratch, terminal,
+-- a fresh split) and for relative-path lookups (:e, :find, netrw, snacks
+-- pickers) run afterward — it has no effect on where buffers already open
+-- elsewhere save, since Neovim pins each buffer to its own absolute path
+-- as soon as it's loaded, regardless of later `:cd` calls (confirmed via
+-- headless testing 2026-07-26).
 vim.keymap.set('n', '<Leader>cd', ':cd %:p:h<CR>', { desc = "Change directory to current file's folder" })
 
 -- w = word wrap toggle
@@ -109,3 +126,86 @@ vim.keymap.set('n', '<Leader>l', function()
   vim.cmd('nohlsearch')
   vim.cmd('normal! ' .. vim.api.nvim_replace_termcodes('<C-l>', true, true, true))
 end, { desc = "Clear search highlight and redraw screen" })
+
+-- d = delete without yanking. `"_d` selects the black-hole register ("_)
+-- for the delete that follows, so plain `d` in Normal mode (an operator,
+-- awaiting a motion — e.g. <Leader>dw, <Leader>dd via the doubled-key
+-- convention) skips the unnamed/numbered/small-delete registers entirely,
+-- leaving whatever was last yanked or deleted with plain `d`/`dr`/etc.
+-- undisturbed for a later paste. Same black-hole-register technique
+-- already used in table-mode.lua's <Leader>t' mapping and dr's
+-- Insert-mode word-delete (AG-display-line-based-navigation.lua's
+-- <M-BS> mapping).
+--
+-- Default (non-recursive) mapping, matching the rest of this file: the
+-- embedded `"` and `d` reach Vim's true register-select and delete
+-- operator directly, not whatever `d` might mean through some other
+-- mapping.
+vim.keymap.set('n', '<Leader>d', [["_d]], { desc = "Delete without yanking" })
+
+-- Visual-mode delete, cursor-position-preserving. Reported 2026-08-08:
+-- deleting a characterwise Visual selection on a wrapped display line can
+-- leave the cursor at the end of the whole LOGICAL line instead of where
+-- the deleted text started (i.e. where `c` would leave it, ready to type
+-- a replacement) — inconsistent with this config's overall display-line
+-- philosophy (AG-display-line-based-navigation.lua). Couldn't reproduce
+-- the drift in headless testing (no real screen there to compute display
+-- rows/wrap against — a known headless/live gap, see that file's
+-- <C-l> mapping comment for a prior instance), so rather than chase
+-- Vim's internal cursor/curswant logic blind, this sidesteps it entirely:
+-- capture the selection's buffer-coordinate start (comparing the visual
+-- anchor `'v'` against the cursor `'.'` — whichever comes first in the
+-- buffer) BEFORE deleting, do the delete, then explicitly place the
+-- cursor there, clamped to the resulting line's length (Normal mode
+-- can't sit past the last character the way Insert mode can).
+--
+-- Deliberately scoped to charwise Visual (`mode() == 'v'`) only, per
+-- explicit request — linewise Visual (`V`) is left running native `d`
+-- unmodified. Every Shift-arrow selection entry point in this config
+-- (AG-display-line-based-navigation.lua) uses charwise `v`, never `V`, so
+-- this covers the actual selection workflow in use here.
+---@param blackhole boolean use the black-hole register instead of the unnamed one
+local function visual_delete_preserve_cursor(blackhole)
+  if vim.fn.mode() ~= 'v' then
+    vim.cmd('normal! ' .. (blackhole and '"_d' or 'd'))
+    return
+  end
+
+  local anchor = vim.fn.getpos('v')
+  local cursor = vim.fn.getpos('.')
+  local start = anchor
+  if cursor[2] < anchor[2] or (cursor[2] == anchor[2] and cursor[3] < anchor[3]) then
+    start = cursor
+  end
+  local start_line, start_col = start[2], start[3] - 1 -- getpos col is 1-indexed
+
+  vim.cmd('normal! ' .. (blackhole and '"_d' or 'd'))
+
+  local line_len = #vim.fn.getline(start_line)
+  if start_col >= line_len then
+    start_col = math.max(line_len - 1, 0)
+  end
+  pcall(vim.api.nvim_win_set_cursor, 0, { start_line, start_col })
+end
+
+vim.keymap.set('v', 'd', function() visual_delete_preserve_cursor(false) end,
+  { desc = "Delete selection (cursor lands where `c` would leave it)" })
+vim.keymap.set('v', '<Leader>d', function() visual_delete_preserve_cursor(true) end,
+  { desc = "Delete selection without yanking" })
+
+-- Backspace deletes the Visual selection to the black hole register —
+-- standard macOS text-editing convention (Backspace/Delete removes a
+-- selection), extending the "macOS-style" editing this config already
+-- leans into elsewhere (AG-display-line-based-navigation.lua). Shares
+-- the same cursor-preserving logic as <Leader>d above rather than
+-- native `"_d`, for the same reason.
+vim.keymap.set('v', '<BS>', function() visual_delete_preserve_cursor(true) end,
+  { desc = "Delete selection without yanking (Backspace)" })
+
+-- c = change without yanking. Same black-hole-register technique as
+-- <Leader>d above, applied to the `c` operator instead: `"_c` in Normal
+-- mode (e.g. <Leader>cw, <Leader>cc) or Visual mode (replace the
+-- selection) both drop into Insert mode as `c` normally does, but the
+-- replaced text is discarded into the black hole register rather than
+-- overwriting the unnamed/numbered registers.
+vim.keymap.set({ 'n', 'v' }, '<Leader>c', [["_c]], { desc = "Change without yanking" })

@@ -239,6 +239,16 @@ vim.keymap.set('i', '<C-e>', '<C-o>$')
 -- already in a Normal-mode-compatible mode where a motion directly extends
 -- the pending selection.
 --
+-- Right uses `e` (end of word), not `w` (start of NEXT word): with Vim's
+-- default inclusive selection, extending to `w` swallows the trailing
+-- space after the current word (and the next word's first character) —
+-- confirmed live 2026-08-08 as visibly wrong, selecting past the word
+-- into the following whitespace. `e` stops exactly at the current word's
+-- last character, matching how word-selection actually behaves in modern
+-- GUI text editors (e.g. macOS's own Option+Shift+Right). Left keeps `b`
+-- (start of previous/current word) — extending backward to `b` has no
+-- equivalent overshoot, so no analogous swap is needed there.
+--
 -- Shift+Cmd+Up/Down extend to the current logical line's start/end (0/$) —
 -- true Cmd, not Shift+Option, per the Up/Down exception atop this section
 -- (Shift+Option+Up/Down is claimed by KM's Shift+PageUp/PageDown rewrite,
@@ -261,7 +271,7 @@ vim.keymap.set('v', '<S-D-End>', '$')
 vim.keymap.set('v', '<S-Home>', 'g0')
 vim.keymap.set('v', '<S-End>', 'g$')
 vim.keymap.set('v', '<S-M-Left>', 'b')
-vim.keymap.set('v', '<S-M-Right>', 'w')
+vim.keymap.set('v', '<S-M-Right>', 'e')
 
 -- Plain Shift+Left/Right/Up/Down (no Option/Cmd): Vim ships its own default
 -- mappings for these before any custom mapping gets a chance — Insert mode
@@ -302,7 +312,7 @@ vim.keymap.set('i', '<S-D-End>', '<Esc>v$')
 vim.keymap.set('i', '<S-Home>', '<Esc>vg0')
 vim.keymap.set('i', '<S-End>', '<Esc>vg$')
 vim.keymap.set('i', '<S-M-Left>', '<Esc>vb')
-vim.keymap.set('i', '<S-M-Right>', '<Esc>vw')
+vim.keymap.set('i', '<S-M-Right>', '<Esc>ve')
 
 -- Insert-mode entry points for the plain Shift-arrow mappings above, same
 -- reasoning as the Shift+Option/Shift+Home/End entry points above them.
@@ -366,10 +376,11 @@ vim.keymap.set('n', '<C-e>', '$')
 -- Shift+Up/Down, Shift+Cmd+Up/Down, Shift+Option+Left/Right, and
 -- Shift+Home/End start a charwise/linewise visual selection from Normal
 -- mode and immediately extend it by the same unit as their Insert/
--- Visual-mode counterparts above (display line, logical line, word, and
--- display-line-start/end respectively) — "v<motion>" rather than
--- "<Esc>v<motion>", since Normal mode has no Insert-mode state to escape
--- out of first.
+-- Visual-mode counterparts above (display line, logical line, word — `b`
+-- backward, `e` forward, see the Visual-mode section's comment for why
+-- forward uses `e` not `w` — and display-line-start/end respectively) —
+-- "v<motion>" rather than "<Esc>v<motion>", since Normal mode has no
+-- Insert-mode state to escape out of first.
 --
 -- <S-D-Up>/<S-D-Down> were missing entirely until 2026-07-08 (this whole
 -- combo just fell through unmapped), which is why it was scrolling the
@@ -389,8 +400,51 @@ vim.keymap.set('n', '<S-D-Down>', 'v$')
 vim.keymap.set('n', '<S-D-Home>', 'v0')
 vim.keymap.set('n', '<S-D-End>', 'v$')
 vim.keymap.set('n', '<S-M-Left>', 'vb')
-vim.keymap.set('n', '<S-M-Right>', 'vw')
+vim.keymap.set('n', '<S-M-Right>', 've')
 vim.keymap.set('n', '<S-Home>', 'vg0')
 vim.keymap.set('n', '<S-End>', 'vg$')
+
+-- =============================================================
+-- Tab switching (Ctrl+Tab / Shift+Ctrl+Tab)
+-- =============================================================
+-- Confirmed on VimR: Ctrl+Tab already cycles to the NEXT tab natively
+-- (outside Neovim, no mapping involved) in whatever mode was active when
+-- pressed — Shift+Ctrl+Tab, the conventional pairing for "previous",
+-- didn't have any native counterpart, so it fell through unhandled.
+-- Rather than only patching the missing direction, both are mapped
+-- explicitly here across every mode, so behavior no longer depends on
+-- however VimR's native handling happens to vary by mode (untested
+-- whether it actually covers Insert/Visual/Terminal the same way).
+--
+-- Unlike the <D-...> (Cmd) mappings elsewhere in this file, Ctrl-modified
+-- keys are ordinary terminal-transmittable sequences in principle, so
+-- these may also reach terminal Neovim under iTerm2 — but that's
+-- untested; iTerm2 itself may claim Ctrl+Tab/Shift+Ctrl+Tab for its own
+-- tab switching before Neovim ever sees them, same "intercepted
+-- upstream" possibility documented for other keys throughout this file.
+-- Revisit if it doesn't fire there.
+--
+-- `<Cmd>...<CR>` (not a plain `gt`/`gT` keystroke replay) runs the Ex
+-- command directly against whatever mode is currently active, without
+-- the mode-specific bypass gymnastics used elsewhere in this file
+-- (<C-o> for Insert, <Esc>-then-re-enter for Visual) — per `:help
+-- :map-cmd`, this is specifically designed to fire from any mode without
+-- first leaving it, which is what makes one mapping usable everywhere
+-- here instead of needing a separate RHS per mode. Confirmed via headless
+-- testing: switching tabs from Insert mode this way leaves the cursor
+-- correctly positioned on the destination tab's window; from Visual
+-- mode, the selection is dropped (switching tabs moves focus to an
+-- entirely different window, so there's no selection left to preserve
+-- across the jump — same has always been true of any tab/window switch
+-- initiated mid-selection, nothing new introduced here).
+--
+-- t (Terminal mode) included alongside n/i/v so tab-switching works
+-- without first escaping out of a running terminal buffer. c (Cmdline
+-- mode) deliberately excluded: switching tabs mid-command-entry is an
+-- unusual edge case nobody asked for, and interacting with the in-
+-- progress command-line typed so far isn't worth the risk of surprising
+-- behavior for a case with no real use here.
+vim.keymap.set({ 'n', 'i', 'v', 't' }, '<C-Tab>', '<Cmd>tabnext<CR>', { desc = "Next tab" })
+vim.keymap.set({ 'n', 'i', 'v', 't' }, '<C-S-Tab>', '<Cmd>tabprevious<CR>', { desc = "Previous tab" })
 
 

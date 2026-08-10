@@ -37,6 +37,11 @@
 -- so e.g. line moves and selection moves could use different keys entirely
 -- if wanted. Set any entry to `""` to disable just that one
 -- direction/mode. Full option list: `:help MiniMove.config`.
+--
+-- Insert-mode Ctrl+h/j/k/l (logical-line move, added 2026-07-17) are NOT
+-- part of `mappings` below — mini.move has no Insert-mode concept of its
+-- own, so they're hand-wired in the `config` function further down instead.
+-- Change/remove those there, not here.
 
 return {
   "echasnovski/mini.move",
@@ -61,4 +66,32 @@ return {
       reindent_linewise = true,
     },
   },
+  -- A `config` function (rather than relying on lazy.nvim's automatic
+  -- `opts` -> `setup(opts)` call) is needed here so the same Ctrl+h/j/k/l
+  -- keys can also move the current *logical* line from Insert mode,
+  -- extended to Insert mode at Aaron's explicit request 2026-07-17 despite
+  -- real conflicts with Insert mode's own built-in meanings for all three
+  -- of <C-h> (Backspace), <C-j> (line break, same as <CR>), and <C-k>
+  -- (digraph entry) — accepted knowingly, not overlooked.
+  config = function(_, opts)
+    require("mini.move").setup(opts)
+
+    -- `<Cmd>...<CR>` (not `<C-o>...`, unlike every other Insert-mode
+    -- mapping in AG-display-line-based-navigation.lua) because
+    -- MiniMove.move_line() is a multi-step operation (yank/delete/paste/
+    -- reindent via its own internal `normal!`-bypass helper, not a single
+    -- Normal-mode keystroke) — `<C-o>` only runs exactly one Normal-mode
+    -- command before returning to Insert mode, which doesn't fit. A
+    -- `<Cmd>` mapping executes the Ex command without leaving the current
+    -- mode at all (mirrors how mini.move wires its own Normal-mode
+    -- mappings: `<Cmd>lua MiniMove.move_line(...)<CR>`), so Insert mode is
+    -- preserved across the move, and MiniMove.move_line()'s own cursor-
+    -- column correction (H.correct_cursor_col) keeps the cursor at the
+    -- same relative column it had before the move rather than snapping to
+    -- the moved line's first non-blank.
+    vim.keymap.set("i", "<C-h>", "<Cmd>lua MiniMove.move_line('left')<CR>")
+    vim.keymap.set("i", "<C-l>", "<Cmd>lua MiniMove.move_line('right')<CR>")
+    vim.keymap.set("i", "<C-j>", "<Cmd>lua MiniMove.move_line('down')<CR>")
+    vim.keymap.set("i", "<C-k>", "<Cmd>lua MiniMove.move_line('up')<CR>")
+  end,
 }

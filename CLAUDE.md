@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Aaron's personal Neovim configuration. It is intentionally minimal but does use **lazy.nvim** as a plugin manager ([lua/config/lazy.lua](lua/config/lazy.lua)), which auto-loads every spec under `lua/plugins/*.lua`. Currently installed plugins: **snacks.nvim** (dashboard + picker, [lua/plugins/snacks.lua](lua/plugins/snacks.lua)), **vim-table-mode** ([lua/plugins/table-mode.lua](lua/plugins/table-mode.lua)), **mini.move** (move lines/selections, [lua/plugins/mini-move.lua](lua/plugins/mini-move.lua)), **autolist.nvim** (list continuation/renumbering, [lua/plugins/autolist.lua](lua/plugins/autolist.lua)), and **mini.surround** (add/delete/replace surrounding pairs, [lua/plugins/mini-surround.lua](lua/plugins/mini-surround.lua)). Don't assume any plugin beyond these five is present, and check the actual files under `lua/plugins/` rather than trusting this list if it's been a while — it drifts. The editor's primary use case here is prose/Markdown/JSON editing; general code editing is handled in VS Code and Xcode, which shapes several of the design decisions below (e.g. display-line-based navigation).
+Aaron's personal Neovim configuration. It is intentionally minimal but does use **lazy.nvim** as a plugin manager ([lua/config/lazy.lua](lua/config/lazy.lua)), which auto-loads every spec under `lua/plugins/*.lua`. Currently installed plugins: **snacks.nvim** (dashboard + picker, [lua/plugins/snacks.lua](lua/plugins/snacks.lua)), **vim-table-mode** ([lua/plugins/table-mode.lua](lua/plugins/table-mode.lua)), **mini.move** (move lines/selections, [lua/plugins/mini-move.lua](lua/plugins/mini-move.lua)), **autolist.nvim** (list continuation/renumbering, [lua/plugins/autolist.lua](lua/plugins/autolist.lua)), **mini.surround** (add/delete/replace surrounding pairs, [lua/plugins/mini-surround.lua](lua/plugins/mini-surround.lua)), **vim-eunuch** (Unix shell command sugar as Ex commands — `:Delete`, `:Rename`, `:Move`, `:Mkdir`, `:SudoWrite`, etc., [lua/plugins/eunuch.lua](lua/plugins/eunuch.lua)), and **mini.ai** (extended around/inner text objects, [lua/plugins/mini-ai.lua](lua/plugins/mini-ai.lua)) — added solely to override its built-in `s` (sentence) object with a newline-aware version ([lua/config/AG-newline-sentence-textobject.lua](lua/config/AG-newline-sentence-textobject.lua)) so `is`/`as` never cross a line boundary. Don't assume any plugin beyond these seven is present, and check the actual files under `lua/plugins/` rather than trusting this list if it's been a while — it drifts. The editor's primary use case here is prose/Markdown/JSON editing; general code editing is handled in VS Code and Xcode, which shapes several of the design decisions below (e.g. display-line-based navigation).
 
 ## Structure
 
@@ -19,13 +19,16 @@ Aaron's personal Neovim configuration. It is intentionally minimal but does use 
     │   ├── AG-table-augmentation.lua                 -- vim-table-mode augmentations (Tab/S-Tab cell nav)
     │   ├── AG-autosave.lua                         -- persistent undo, backups, autosave, auto-persist new buffers
     │   ├── AG-atext-guard.lua                        -- disable/enable aText around Insert mode to prevent buffer corruption
+    │   ├── AG-newline-sentence-textobject.lua        -- mini.ai custom `s` object: newline is always a sentence boundary
     │   └── autocmds.lua                              -- autocommands (e.g. auto-`lcd` to current file's directory)
     └── plugins/
         ├── snacks.lua                                -- folke/snacks.nvim spec (dashboard + picker)
         ├── table-mode.lua                            -- dhruvasagar/vim-table-mode spec
         ├── mini-move.lua                             -- echasnovski/mini.move spec (move lines/selections)
         ├── autolist.lua                              -- gaoDean/autolist.nvim spec (list continuation/renumbering)
-        └── mini-surround.lua                         -- echasnovski/mini.surround spec (surrounding pairs)
+        ├── mini-surround.lua                         -- echasnovski/mini.surround spec (surrounding pairs)
+        ├── mini-ai.lua                                -- echasnovski/mini.ai spec (text objects; custom sentence object)
+        └── eunuch.lua                                 -- tpope/vim-eunuch spec (Ex commands: :Delete, :Rename, :Move, etc.)
 ```
 
 `init.lua` requires `config.lazy` first (which loads plugins), then the `config.AG-*`/`config.autocmds` modules. Any new non-plugin modules should go under `lua/config/` and be `require()`'d from `init.lua`, following this same convention; new plugins get their own spec file under `lua/plugins/`, named after the plugin.
