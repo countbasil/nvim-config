@@ -60,8 +60,9 @@ return {
         -- it's relocated next to <Leader>lb/<Leader>lB below (the other
         -- list-marker actions in this file) instead — "l" for list, "r"
         -- for recalculate reads cleaner than the <Leader>c* namespace,
-        -- which already means "change" globally (init.lua) and "cycle"
-        -- for <Leader>cn/<Leader>cp just below.
+        -- which already means "change" globally (init.lua). The marker-cycle
+        -- mappings just below (<Leader>ln/<Leader>lp) were relocated from
+        -- <Leader>cn/<Leader>cp to the same "l" namespace for consistency.
         --
         -- Deliberately NOT mapping <CR> here (previously bound to
         -- AutolistToggleCheckbox): as of 2026-07-18, Normal-mode <CR> is
@@ -100,12 +101,12 @@ return {
         -- I. -> back to -, per `config.cycle`) forward/backward, with
         -- dot-repeat support via autolist's own *_dr helper functions
         -- (these genuinely exist in autolist.auto, unlike the dd/d ones
-        -- above). <Leader>c-prefixed to fit this config's existing
-        -- <Leader>{t,f,r,cd,w}* leader-key namespace without colliding
-        -- with any of it.
-        vim.keymap.set("n", "<Leader>cn", require("autolist").cycle_next_dr,
+        -- above). <Leader>l-prefixed (list namespace) alongside
+        -- <Leader>lb/<Leader>lB/<Leader>lr below, rather than <Leader>c*,
+        -- which already means "change" globally (init.lua).
+        vim.keymap.set("n", "<Leader>ln", require("autolist").cycle_next_dr,
           vim.tbl_extend("force", opts, { expr = true }))
-        vim.keymap.set("n", "<Leader>cp", require("autolist").cycle_prev_dr,
+        vim.keymap.set("n", "<Leader>lp", require("autolist").cycle_prev_dr,
           vim.tbl_extend("force", opts, { expr = true }))
 
         -- Visual mode: turn the selected lines into a bullet list, or strip
