@@ -57,5 +57,30 @@ return {
     { "<Leader>fg", function() Snacks.picker.grep() end, desc = "Grep (live)" },
     { "<Leader>fb", function() Snacks.picker.buffers() end, desc = "Buffers" },
     { "<Leader>fe", function() Snacks.picker.explorer() end, desc = "File Explorer" },
+    -- Rename the current buffer's file on disk. LSP-aware (unlike vim-eunuch's
+    -- :Rename/:Move, which it replaces): notifies willRenameFiles/didRenameFiles
+    -- so any attached LSP client can update references, then moves the file and
+    -- re-points the buffer at the new path.
+    { "<Leader>fR", function() Snacks.rename.rename_file() end, desc = "Rename File" },
+    -- Delete the current buffer's file on disk and close the buffer. Replaces
+    -- vim-eunuch's :Delete. Permanent (not trash), matching :Delete's own
+    -- behavior — mirrors what the explorer's `d` action does, just without
+    -- needing to open the explorer first.
+    {
+      "<Leader>fD",
+      function()
+        local file = vim.api.nvim_buf_get_name(0)
+        if file == "" then
+          return vim.notify("No file in current buffer", vim.log.levels.WARN)
+        end
+        local choice = vim.fn.confirm("Delete " .. vim.fn.fnamemodify(file, ":~:.") .. "?", "&Yes\n&No", 2)
+        if choice ~= 1 then return end
+        if vim.fn.delete(file) ~= 0 then
+          return vim.notify("Failed to delete " .. file, vim.log.levels.ERROR)
+        end
+        Snacks.bufdelete({ file = file, force = true })
+      end,
+      desc = "Delete File",
+    },
   },
 }

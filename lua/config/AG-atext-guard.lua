@@ -69,14 +69,31 @@
 local state_dir = vim.fn.stdpath('state') .. '/atext-guard'
 vim.fn.mkdir(state_dir, 'p')
 
-local enable_scpt = state_dir .. '/enable.scpt'
-local disable_scpt = state_dir .. '/disable.scpt'
+-- v2: also mirrors this module's own Insert-mode state into a Keyboard
+-- Maestro variable (AGaTextInsertMode), so KM's own app-activation-based
+-- aText toggles (which predate this module and know nothing about Vim's
+-- mode) can check it before blindly disabling aText out from under an
+-- in-progress Insert-mode session — e.g. switching away from VimR mid-Insert
+-- and back was unconditionally turning aText back off. Filename bumped
+-- (not just editing enable.scpt/disable.scpt in place) so an existing
+-- precompiled cache from before this change doesn't silently keep running
+-- the old aText-only script.
+local enable_scpt = state_dir .. '/enable-v2.scpt'
+local disable_scpt = state_dir .. '/disable-v2.scpt'
 
 if vim.fn.filereadable(enable_scpt) == 0 then
-  vim.fn.system({ 'osacompile', '-o', enable_scpt, '-e', 'tell application "aText" to enable' })
+  vim.fn.system({
+    'osacompile', '-o', enable_scpt, '-e',
+    'tell application "aText" to enable\n'
+      .. 'tell application "Keyboard Maestro Engine" to setvariable "AGaTextInsertMode" to "1"',
+  })
 end
 if vim.fn.filereadable(disable_scpt) == 0 then
-  vim.fn.system({ 'osacompile', '-o', disable_scpt, '-e', 'tell application "aText" to disable' })
+  vim.fn.system({
+    'osacompile', '-o', disable_scpt, '-e',
+    'tell application "aText" to disable\n'
+      .. 'tell application "Keyboard Maestro Engine" to setvariable "AGaTextInsertMode" to "0"',
+  })
 end
 
 local augroup = vim.api.nvim_create_augroup('AGAtextGuard', { clear = true })
