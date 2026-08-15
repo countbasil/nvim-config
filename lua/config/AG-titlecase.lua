@@ -77,19 +77,19 @@ end
 function M.setup()
   -- Normal mode: `gl` + motion/text-object, e.g. gliw, glap, gl$, glj
   vim.keymap.set("n", "gl", function()
-    vim.o.operatorfunc = "v:lua.require'config.titlecase'.titlecase_opfunc"
+    vim.o.operatorfunc = "v:lua.require'config.AG-titlecase'.titlecase_opfunc"
     return "g@"
   end, { expr = true, desc = "Title-case operator" })
 
   -- Doubled form for whole line, e.g. gll, matching guu / gUU / g~~ convention
   vim.keymap.set("n", "gll", function()
-    vim.o.operatorfunc = "v:lua.require'config.titlecase'.titlecase_opfunc"
+    vim.o.operatorfunc = "v:lua.require'config.AG-titlecase'.titlecase_opfunc"
     return "g@_"
   end, { expr = true, desc = "Title-case current line" })
 
   -- Visual mode: select text, hit gl
   vim.keymap.set("v", "gl", function()
-    vim.o.operatorfunc = "v:lua.require'config.titlecase'.titlecase_opfunc"
+    vim.o.operatorfunc = "v:lua.require'config.AG-titlecase'.titlecase_opfunc"
     return "g@"
   end, { expr = true, desc = "Title-case selection" })
 end
