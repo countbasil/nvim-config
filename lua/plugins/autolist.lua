@@ -14,6 +14,55 @@ return {
   config = function()
     require("autolist").setup()
 
+    -- Bridge table for the custom <CR> mapping below, exposed globally
+    -- (not a local upvalue) since the mapping's <Cmd>lua fragments run as
+    -- independent `:lua` calls in the global Lua environment with no
+    -- access to this closure — same rationale/naming convention as
+    -- `_G.__ag_autosave_timer` in AG-autosave.lua. Reassigning its
+    -- functions on every config() run (e.g. `<Leader>rc`/`:Lazy reload`)
+    -- is harmless idempotent overwrite, no cleanup needed.
+    _G.__ag_autolist_cr = _G.__ag_autolist_cr or {}
+    local cr_bridge = _G.__ag_autolist_cr
+
+    -- Captures state right after the real <CR> splits the line, before
+    -- AutolistNewBullet (upstream) touches it: the exact text that just
+    -- became the new line (`remainder`), and where <CR>/autoindent left
+    -- the cursor on it (`pre_col`) — the correct cursor position for the
+    -- common case where this line turns out not to be part of a list at
+    -- all, and AutolistNewBullet ends up doing nothing.
+    function cr_bridge.pre_cr()
+      cr_bridge.remainder = vim.api.nvim_get_current_line()
+      cr_bridge.pre_col = vim.api.nvim_win_get_cursor(0)[2]
+    end
+
+    -- Repositions the cursor after AutolistNewBullet has run. Two cases:
+    --  * The line is unchanged (no list found, or upstream's own
+    --    "delete the now-empty bullet line" branch, which also leaves
+    --    this line's own text untouched) — keep whatever <CR> already
+    --    set (`pre_col`), matching vanilla Enter behavior exactly.
+    --  * Otherwise a bullet was prepended: upstream strips the
+    --    remainder's OWN leading whitespace before re-prepending its
+    --    computed marker (see autolist/auto.lua's new_bullet:
+    --    `cur_line:gsub("^%s*", "", 1)`), so the final line's length
+    --    minus the remainder's STRIPPED length gives exactly the
+    --    marker's length — deliberately not re-deriving the marker via
+    --    our own pattern match, so this stays correct for every marker
+    --    style/branch upstream supports (plain, ordered-list increment,
+    --    colon-indent, checkbox) without duplicating its logic.
+    function cr_bridge.post_cr()
+      local final_line = vim.api.nvim_get_current_line()
+      local target_col
+      if final_line == cr_bridge.remainder then
+        target_col = cr_bridge.pre_col
+      else
+        local leading_ws = vim.fn.matchstr(cr_bridge.remainder, [[^\s*]])
+        local stripped_len = #cr_bridge.remainder - #leading_ws
+        target_col = math.max(#final_line - stripped_len, 0)
+      end
+      local row = vim.api.nvim_win_get_cursor(0)[1]
+      vim.api.nvim_win_set_cursor(0, { row, target_col })
+    end
+
     -- Upstream's own recommended mappings (README), applied buffer-locally
     -- via a FileType autocmd rather than global vim.keymap.set calls.
     -- Necessary, not just cautious: `ft` above only controls WHEN the
@@ -45,7 +94,20 @@ return {
         -- an explicit, deliberate per-buffer toggle, so list-Tab losing
         -- out only while you've specifically turned table mode on reads as
         -- predictable precedence, not a real conflict.
-        vim.keymap.set("i", "<CR>", "<CR><Cmd>AutolistNewBullet<CR>", opts)
+        -- Splitting mid-line and inserting the new bullet is upstream
+        -- behavior (AutolistNewBullet), but upstream's own new_bullet()
+        -- always leaves the cursor at the END of the new line (its
+        -- utils.set_current_line unconditionally does `col("$")`) —
+        -- correct for Enter at end-of-line (nothing follows the bullet
+        -- anyway), but wrong for Enter mid-line: the cursor lands after
+        -- the carried-over remainder text instead of right after the
+        -- bullet marker, where typing should resume. Reported 2026-08-16.
+        -- Fixed via cr_bridge above (see its comments for the approach).
+        vim.keymap.set("i", "<CR>",
+          "<CR><Cmd>lua __ag_autolist_cr.pre_cr()<CR>"
+          .. "<Cmd>AutolistNewBullet<CR>"
+          .. "<Cmd>lua __ag_autolist_cr.post_cr()<CR>",
+          opts)
         vim.keymap.set("i", "<Tab>", "<Cmd>AutolistTab<CR>", opts)
         vim.keymap.set("i", "<S-Tab>", "<Cmd>AutolistShiftTab<CR>", opts)
 
