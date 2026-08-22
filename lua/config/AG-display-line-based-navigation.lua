@@ -373,20 +373,27 @@ vim.keymap.set('n', '<D-Down>', '$')
 -- the physical key anyway).
 vim.keymap.set('n', '<C-e>', '$')
 
--- Shift+Up/Down, Shift+Cmd+Up/Down, Shift+Option+Left/Right, and
+-- Shift+Left/Right/Up/Down, Shift+Cmd+Up/Down, Shift+Option+Left/Right, and
 -- Shift+Home/End start a charwise/linewise visual selection from Normal
 -- mode and immediately extend it by the same unit as their Insert/
--- Visual-mode counterparts above (display line, logical line, word — `b`
--- backward, `e` forward, see the Visual-mode section's comment for why
--- forward uses `e` not `w` — and display-line-start/end respectively) —
--- "v<motion>" rather than "<Esc>v<motion>", since Normal mode has no
--- Insert-mode state to escape out of first.
+-- Visual-mode counterparts above (character, display line, logical line,
+-- word — `b` backward, `e` forward, see the Visual-mode section's comment
+-- for why forward uses `e` not `w` — and display-line-start/end
+-- respectively) — "v<motion>" rather than "<Esc>v<motion>", since Normal
+-- mode has no Insert-mode state to escape out of first.
 --
 -- <S-D-Up>/<S-D-Down> were missing entirely until 2026-07-08 (this whole
 -- combo just fell through unmapped), which is why it was scrolling the
 -- viewport instead of doing anything cursor/selection-related — there was
 -- no Normal-mode mapping to catch it at all, unlike Insert mode which
--- already had one.
+-- already had one. Plain <S-Left>/<S-Right> had the exact same gap,
+-- caught 2026-08-21: with no Normal-mode entry point, they fell through to
+-- Vim's own default word-motion (the behavior described/rejected in the
+-- Visual-mode section's comment above) instead of starting a selection,
+-- while <S-Up>/<S-Down> right below worked fine — the asymmetry is what
+-- gave it away.
+vim.keymap.set('n', '<S-Left>', 'vh')
+vim.keymap.set('n', '<S-Right>', 'vl')
 vim.keymap.set('n', '<S-Up>', 'vgk')
 vim.keymap.set('n', '<S-Down>', 'vgj')
 -- Shift+Cmd+Up/Down/Home/End: plain 0/$ (not g0/g$), same bypass reasoning
