@@ -9,6 +9,9 @@ require("config.lazy")
 -- enable my tweaks including 
 require("config.AG-titlecase").setup()  -- * title case function [maps to `gl`]
 
+-- slugify: replace spaces with dashes in a Visual-mode selection [maps to `<Leader>-`]
+require('config.AG-slugify')
+
 -- my display-line [vs file-line] navigation (incl display-line def for `dr`)
 require('config.AG-display-line-based-navigation')
 
