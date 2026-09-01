@@ -3,8 +3,23 @@
 -- Visual mode: <leader>- replaces every space in the selection with a dash.
 -- \%V restricts the match to the visual-selection bounds (so a
 -- character/block-wise selection only touches text actually selected, not
--- the whole line); the '<,'> range makes the substitute run across every
--- line the selection spans, not just the cursor's line.
-vim.keymap.set('x', '<leader>-', function()
-  vim.cmd([['<,'>s/\%V /-/g]])
-end, { desc = 'Replace spaces with dashes in selection' })
+-- the whole line).
+--
+-- Deliberately a STRING rhs, not a Lua function: pressing `:` while still in
+-- Visual mode is what makes Vim auto-populate the '<,'> range and set the
+-- '< / '> marks from the live selection in the first place. A Lua function
+-- callback runs without that ':'-triggered mark-setting ever happening, so
+-- '< / '> are stale (or, on a buffer where visual mode was never exited
+-- before, entirely unset) — confirmed via headless testing: a function rhs
+-- calling `vim.cmd([['<,'>s/\%V /-/g]])` throws `E20: Mark not set`, while
+-- this string rhs (fed through real Vim input processing, same as typing it
+-- by hand) correctly resolves '<,'> and applies across every line the
+-- selection spans, not just the cursor's line.
+--
+-- Trailing `` `> `` (backtick, jump-to-exact-position, not apostrophe's
+-- jump-to-first-non-blank): without it, `:s` leaves the cursor at the start
+-- of the last affected LOGICAL line, matching :s's normal behavior but not
+-- this selection-relative operation. The '> mark still points at the right
+-- spot afterward because swapping a space for a dash doesn't change any
+-- line's length, so no column/line shift invalidates it.
+vim.keymap.set('x', '<leader>-', [[:s/\%V /-/g<CR>`>]], { desc = 'Replace spaces with dashes in selection' })
