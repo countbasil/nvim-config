@@ -222,6 +222,16 @@ vim.keymap.set('i', '<M-BS>', '<C-w>')
 vim.keymap.set('i', '<D-Up>', '<C-o>0')
 vim.keymap.set('i', '<D-Down>', '<C-o>$')
 
+-- Insert mode: swallow Cmd+C. Superwhisper's "Super" mode context-awareness
+-- feature sends a real Cmd+C (to grab existing/selected text as context)
+-- when its ⌥Z hotkey starts recording, and per the Cmd-key discussion above,
+-- that reaches terminal Neovim untouched. With no mapping, it fell through
+-- and got typed as the literal characters "<D-c>" instead of being consumed
+-- — confirmed 2026-09-13 not to happen at a bare iTerm2 shell prompt, only
+-- inside Neovim Insert mode. No Insert-mode use for Cmd+C otherwise, so
+-- <Nop> it.
+vim.keymap.set('i', '<D-c>', '<Nop>')
+
 -- Insert mode: ^E moves to the end of the current logical line, no
 -- selection — same plain-$ bypass motion as Cmd+Down/Cmd+End above, just
 -- without the leading v. Deliberately repurposes native i_CTRL-E (insert
