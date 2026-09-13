@@ -1,9 +1,9 @@
 -- ~/.config/nvim/lua/plugins/mini-move.lua
 --
 -- mini.move (echasnovski/mini.move): move the current line, or a Visual
--- selection, in any direction — with automatic reindent on vertical moves.
--- Installed standalone (not the full echasnovski/mini.nvim suite), matching
--- this repo's minimalism: only pull in the one module actually wanted.
+-- selection, in any direction. Installed standalone (not the full
+-- echasnovski/mini.nvim suite), matching this repo's minimalism: only pull
+-- in the one module actually wanted.
 --
 -- Mapped to Control+h/j/k/l (not mini.move's own Option/<M-...> defaults),
 -- at Aaron's explicit request 2026-07-09 after weighing the trade-offs:
@@ -52,8 +52,13 @@ return {
       -- Move Visual selection in Visual mode.
       left = "<C-h>",
       right = "<C-l>",
-      down = "<C-j>",
-      up = "<C-k>",
+      -- down/up left unmapped here (`""` = mini.move creates no keymap for
+      -- them at all — see H.map's early-return on an empty lhs) and hand-
+      -- wired instead, further down, to force whole-logical-line behavior
+      -- regardless of how the Visual selection was made. See the comment
+      -- there for why.
+      down = "",
+      up = "",
 
       -- Move current line in Normal mode.
       line_left = "<C-h>",
@@ -62,8 +67,30 @@ return {
       line_up = "<C-k>",
     },
     options = {
-      -- Automatically reindent selection during linewise vertical move.
-      reindent_linewise = true,
+      -- Off (reported 2026-09-12), not mini.move's own default of `true`.
+      -- With `true`, every vertical move ends with a Vim `=` reindent of
+      -- the moved line(s) (mini/move.lua: `cmd('==')` for move_line,
+      -- `cmd('=gv')` for move_selection). This config sets no
+      -- 'indentexpr'/'cindent'/'lisp' anywhere (prose/Markdown/JSON have
+      -- no such filetype indenter installed), and Vim's `=` with none of
+      -- those active falls back to copying the indent of the
+      -- newly-adjacent line rather than leaving the moved line alone --
+      -- confirmed headlessly: a 4-space-indented line moved next to a
+      -- 0-indent line has its own indent silently zeroed out. For code
+      -- (where an indentexpr/cindent IS active) that fallback never
+      -- triggers and this reindent would be genuinely useful, but here it
+      -- only ever means "meaningful indentation (nested list items,
+      -- blockquotes, JSON nesting) can get silently rewritten by a line
+      -- move" -- exactly the "line becomes indented" symptom reported,
+      -- confusingly visible only on the first move that actually crosses
+      -- an indent-level boundary (moving between same-indent neighbors is
+      -- a no-op for this fallback, so it doesn't visibly recur until the
+      -- next real level change). Reproduces identically in Normal
+      -- (move_line), Insert (same move_line, hand-wired below), and
+      -- Visual mode (move_selection's `=gv`) alike, despite only being
+      -- reported for the first two -- so this is disabled globally rather
+      -- than per-mode.
+      reindent_linewise = false,
     },
   },
   -- A `config` function (rather than relying on lazy.nvim's automatic
@@ -93,5 +120,43 @@ return {
     vim.keymap.set("i", "<C-l>", "<Cmd>lua MiniMove.move_line('right')<CR>")
     vim.keymap.set("i", "<C-j>", "<Cmd>lua MiniMove.move_line('down')<CR>")
     vim.keymap.set("i", "<C-k>", "<Cmd>lua MiniMove.move_line('up')<CR>")
+
+    -- Visual-mode <C-j>/<C-k> (added 2026-09-12): force the move to act on
+    -- whole logical lines no matter which Visual submode the selection was
+    -- made in.
+    --
+    -- MiniMove.move_selection()'s vertical move only treats the selection
+    -- as full lines when Vim's own mode() reports linewise Visual ('V')
+    -- (see mini/move.lua's `is_linewise = cur_mode == 'V'`). In charwise
+    -- ('v') or blockwise ('<C-v>') mode it cuts and moves only the exact
+    -- selected characters, dragging just that span down between the
+    -- surrounding text and effectively splitting the line it came from —
+    -- not what "move this line" should mean. Aaron wants Up/Down to always
+    -- carry every logical line the selection touches as a unit, regardless
+    -- of which Visual submode he happened to select with — Left/Right are
+    -- unaffected by this since a horizontal move is a within-line shift
+    -- either way, so those keep mini.move's own selection-relative default.
+    --
+    -- Fix: if not already linewise, press `V` first. Pressing `V` while
+    -- already in Visual mode doesn't start a new selection — it switches
+    -- the existing selection's type in place, extending it to the same
+    -- full lines it already spanned (a real ambiguity only for a single
+    -- already-linewise selection, where `V` would instead exit Visual
+    -- mode entirely — hence the `~= 'V'` guard below). A Lua function
+    -- callback (like mini.move's own `<Cmd>...<CR>` mappings, unlike a
+    -- literal-keys string rhs) runs without leaving Visual mode, so
+    -- `vim.fn.mode()` inside it still reports the live selection's actual
+    -- submode and `MiniMove.move_selection()` still sees real '<,'> marks.
+    local function move_selection_as_lines(direction)
+      if vim.fn.mode() ~= "V" then
+        vim.cmd("normal! V")
+      end
+      MiniMove.move_selection(direction)
+    end
+
+    vim.keymap.set("x", "<C-j>", function() move_selection_as_lines("down") end,
+      { desc = "Move selection down (whole lines)" })
+    vim.keymap.set("x", "<C-k>", function() move_selection_as_lines("up") end,
+      { desc = "Move selection up (whole lines)" })
   end,
 }
