@@ -12,6 +12,9 @@ require("config.AG-titlecase").setup()  -- * title case function [maps to `gl`]
 -- slugify: replace spaces with dashes in a Visual-mode selection [maps to `<Leader>-`]
 require('config.AG-slugify')
 
+-- collapse blank-line paragraph breaks to a single newline [maps to `<Leader>1`]
+require('config.AG-collapse-blank-lines')
+
 -- my display-line [vs file-line] navigation (incl display-line def for `dr`)
 require('config.AG-display-line-based-navigation')
 
