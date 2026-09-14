@@ -21,6 +21,11 @@ require('config.AG-display-line-based-navigation')
 -- Normal-mode <CR> (split line, stay in Insert) / <BS> (delete char, stay in Normal)
 require('config.AG-normal-mode-editing')
 
+-- x/s/c (single-line only) stop overwriting ""/system clipboard, so a
+-- throwaway small edit can't clobber a deliberate big cut/yank as the
+-- default paste target
+require('config.AG-small-edit-registers')
+
 -- personal augmentations to vim-table-mode (e.g. Tab/S-Tab cell nav)
 require('config.AG-table-augmentation')
 

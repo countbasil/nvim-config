@@ -4,15 +4,25 @@
 -- =============================================================
 -- j/k/0/$ now operate on *visual* rows (what you see on screen).
 -- gj/gk/g0/g$ retain the original *logical*-line behavior as an
--- escape hatch. Applied across normal, visual, AND operator-pending
--- modes so that d$, dj, y0, etc. all respect display-line boundaries
--- too — otherwise e.g. d$ on a wrapped line would delete to the end
--- of the whole paragraph instead of just the visible row.
-
-vim.keymap.set({ 'n', 'v', 'o' }, 'j', 'gj')
-vim.keymap.set({ 'n', 'v', 'o' }, 'k', 'gk')
-vim.keymap.set({ 'n', 'v', 'o' }, 'gj', 'j')
-vim.keymap.set({ 'n', 'v', 'o' }, 'gk', 'k')
+-- escape hatch. Applied across normal and visual modes so that
+-- plain j/k/0/$ movement (and Visual-mode selection built from them)
+-- follows what's actually on screen.
+--
+-- j/k are deliberately NOT swapped in operator-pending ('o') mode,
+-- unlike 0/$ below — reversed 2026-09-13 at Aaron's explicit request:
+-- `dj`/`d2k`/`cj`/etc. should act on logical lines (Vim's traditional,
+-- expected meaning for an operator + j/k count), even though a bare
+-- `j`/`k` keystroke moves by display row. This was originally swapped
+-- in 'o' mode too (see prior history in git log if needed), but that
+-- was never actually requested for j/k specifically — only 0/$ has a
+-- genuine "d$ on a wrapped line shouldn't eat the whole paragraph"
+-- justification (see the 0/$ block below), and j/k's case turned out
+-- to be the opposite: operating on N *logical* lines is exactly what's
+-- wanted for d/c/y + j/k, count or no count.
+vim.keymap.set({ 'n', 'v' }, 'j', 'gj')
+vim.keymap.set({ 'n', 'v' }, 'k', 'gk')
+vim.keymap.set({ 'n', 'v' }, 'gj', 'j')
+vim.keymap.set({ 'n', 'v' }, 'gk', 'k')
 
 vim.keymap.set({ 'n', 'v', 'o' }, '0', 'g0')
 vim.keymap.set({ 'n', 'v', 'o' }, '$', 'g$')
@@ -341,12 +351,12 @@ vim.keymap.set('i', '<S-Down>', '<Esc>vgj')
 -- this file.
 
 -- Plain Up/Down move by display line, same as j/k already do (top of this
--- file) — extended to both n AND o (operator-pending), same reasoning as
--- j/k getting both there: so e.g. d<Down> deletes to the next display row,
--- not the next logical line, matching "like j/k do" exactly rather than
--- just visually moving the cursor.
-vim.keymap.set({ 'n', 'o' }, '<Up>', 'gk')
-vim.keymap.set({ 'n', 'o' }, '<Down>', 'gj')
+-- file). NOT extended to 'o' (operator-pending) — reversed 2026-09-13
+-- alongside j/k above, for the same reason and at Aaron's explicit
+-- confirmation: d<Down>/c<Up> should act on logical lines just like
+-- d2j/c2k now do, rather than the next display row.
+vim.keymap.set('n', '<Up>', 'gk')
+vim.keymap.set('n', '<Down>', 'gj')
 
 -- Option+Left/Right move by word, matching the Insert-mode Option+Left/
 -- Right mapping above (b/w directly — no <C-o> needed, Normal mode already
