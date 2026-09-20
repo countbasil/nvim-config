@@ -129,11 +129,37 @@ vim.keymap.set('n', '<Leader>rc', function()
   vim.cmd("source $MYVIMRC")
 
   require("lazy.core.plugin").load()
+  local Loader = require("lazy.core.loader")
   local plugin_errors = {}
   for name, plugin in pairs(require("lazy.core.config").plugins) do
     if name ~= "lazy.nvim" then
       plugin._.handlers = nil
-      local ok, err = pcall(require("lazy.core.loader").reload, plugin)
+
+      -- Guard against a plugin whose main module uses an __index
+      -- metatable to auto-require any missing key as a submodule (e.g.
+      -- snacks.nvim's `Snacks` table) turning lazy.nvim's harmless "does
+      -- this plugin define a deactivate() hook?" probe into an uncaught
+      -- "module not found" error — confirmed 2026-09-20: snacks.nvim has
+      -- no lua/snacks/deactivate.lua, but merely accessing
+      -- `Snacks.deactivate` tries to require() it and throws, which
+      -- surfaced as a full-screen "Failed to deactivate plugin
+      -- snacks.nvim" error on every single reload. A plain field access
+      -- can't tell "legitimately absent" apart from "this plugin errors
+      -- on any unknown key", so where such a metatable is detected,
+      -- `deactivate` is pre-seeded to `false` directly via rawset
+      -- (bypassing the metatable), so the probe finds a real, falsy
+      -- field instead of triggering the trap. No-op for plugins whose
+      -- main module doesn't have this pattern (i.e. everything else
+      -- currently installed).
+      local ok_main, mod = pcall(require, Loader.get_main(plugin) or "")
+      if ok_main and type(mod) == "table" then
+        local mt = getmetatable(mod)
+        if mt and type(mt.__index) == "function" and rawget(mod, "deactivate") == nil then
+          rawset(mod, "deactivate", false)
+        end
+      end
+
+      local ok, err = pcall(Loader.reload, plugin)
       if not ok then
         table.insert(plugin_errors, name .. ": " .. tostring(err))
       end
