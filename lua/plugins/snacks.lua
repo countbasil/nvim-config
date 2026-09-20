@@ -152,7 +152,13 @@ return {
         local ext = stem and basename:sub(#stem + 1) or ""
 
         local default_stem = stem or basename
-        if default_stem:match("^%d%d%d%d%-%d%d%-%d%d_%d%d%d%d%d%d(_%d+)?$") then
+        -- Lua patterns have no `|` alternation and no quantifier on a
+        -- parenthesized group (unlike regex, "(_%d+)?" is NOT "optional
+        -- _%d+" — it silently never matches), hence two explicit checks
+        -- for "with" and "without" the collision suffix.
+        local is_date_slug = default_stem:match("^%d%d%d%d%-%d%d%-%d%d_%d%d%d%d%d%d$")
+          or default_stem:match("^%d%d%d%d%-%d%d%-%d%d_%d%d%d%d%d%d_%d+$")
+        if is_date_slug then
           local first_line = vim.api.nvim_buf_get_lines(0, 0, 1, false)[1] or ""
           local candidate = first_line:gsub("[/:]", "-"):gsub("%c", "")
           candidate = candidate:gsub("^%s+", ""):gsub("%s+$", "")
