@@ -70,20 +70,84 @@ package.path = config_lua_path .. '/?.lua;' .. config_lua_path .. '/?/init.lua;'
 --  - l* = list functions (bulletize/un-bulletize selection) [autolist.nvim config, markdown/text only]
 
 -- rc = reload config [init.lua]
+--
+-- Also reloads lazy.nvim-managed plugin specs (lua/plugins/*.lua),
+-- covering the gap the CLAUDE.md docs used to call out (":Lazy reload
+-- needed separately"). Two independent problems, two independent fixes:
+--
+-- 1. lua/config/*.lua modules ARE real require()d Lua modules, so the
+--    cache-clear loop below (unchanged) handles them exactly as before.
+--
+-- 2. lua/plugins/*.lua files are NOT require()d the normal way — lazy's
+--    Spec:import() reads them with loadfile() and never populates
+--    package.loaded for them, so the cache-clear loop can't reach them
+--    regardless of what it matches. Instead:
+--      - `Plugin.load()` re-parses every spec fresh from disk into
+--        Config.plugins (the same re-parse lazy's own background
+--        change-detection watcher already runs a couple seconds after
+--        any save — see lazy/manage/reloader.lua — but done here
+--        synchronously so "reload now" actually means now).
+--      - Each plugin's `_.handlers` cache is cleared before reload:
+--        lazy's own Handler.enable() only re-resolves a plugin's
+--        keys/events/etc from the current spec when that cache is
+--        empty, so leaving it in place after a spec re-parse would
+--        silently keep re-arming the OLD keys/opts (confirmed via
+--        headless test 2026-09-20: without this, an edited `desc` on
+--        <Leader>fR never took effect across repeated reloads).
+--      - `Loader.reload(plugin)` then re-runs that plugin's
+--        init/opts/config/keys from the refreshed spec — the same
+--        thing `:Lazy reload <plugin>` does for one plugin from the
+--        UI, done here for all of them at once.
+--      - The synthetic "lazy.nvim" self-entry (present in
+--        Config.plugins for internal bookkeeping) is skipped: reloading
+--        it walks and clears lazy.nvim's OWN lua/ modules mid-loop,
+--        which corrupts every subsequent plugin's reload in the same
+--        pass (confirmed via headless test 2026-09-20 — errors only
+--        appeared for plugins processed after it, order-dependently).
+--
+--    Known gap, not worked around: removing a `keys` entry (or other
+--    handler-managed binding) from a spec file and reloading does NOT
+--    unbind the old mapping — lazy's handler-disable path deletes then
+--    immediately re-creates the same real keymap rather than dropping
+--    it (confirmed via headless test 2026-09-20). A key that's actually
+--    been deleted from a spec, not just edited, needs a real restart to
+--    stop working. Additions and in-place edits (opts, keys' rhs
+--    functions, desc, etc.) — the common case — reload cleanly.
 vim.keymap.set('n', '<Leader>rc', function()
-  -- Lua caches every require()d module, so re-sourcing init.lua alone
-  -- would just re-run the *cached* (stale) versions of our own config
-  -- modules rather than picking up file edits. Clearing every
-  -- "config.*" entry here (rather than naming individual files) means
-  -- any module added under lua/config/ in the future is covered
-  -- automatically, with no need to remember to update this list.
+  -- config.lazy is skipped here: it's just the bootstrap that calls
+  -- require("lazy").setup(), and lazy.nvim refuses to run setup() a
+  -- second time in one session (it warns "Re-sourcing your config is
+  -- not supported" and returns immediately) — clearing and
+  -- re-requiring it would only produce that warning on every reload
+  -- rather than actually reloading anything. Plugin specs under
+  -- lua/plugins/*.lua are reloaded explicitly below instead.
   for name, _ in pairs(package.loaded) do
-    if name == 'config' or name:match('^config%.') then
+    if (name == 'config' or name:match('^config%.')) and name ~= 'config.lazy' then
       package.loaded[name] = nil
     end
   end
   vim.cmd("source $MYVIMRC")
-  print("Config reloaded!")
+
+  require("lazy.core.plugin").load()
+  local plugin_errors = {}
+  for name, plugin in pairs(require("lazy.core.config").plugins) do
+    if name ~= "lazy.nvim" then
+      plugin._.handlers = nil
+      local ok, err = pcall(require("lazy.core.loader").reload, plugin)
+      if not ok then
+        table.insert(plugin_errors, name .. ": " .. tostring(err))
+      end
+    end
+  end
+
+  if #plugin_errors > 0 then
+    vim.notify(
+      "Config reloaded, but some plugins failed to reload:\n" .. table.concat(plugin_errors, "\n"),
+      vim.log.levels.ERROR
+    )
+  else
+    print("Config reloaded!")
+  end
 end, { desc = "Reload config" })
 
 -- cd = change Neovim's global working directory to the current file's

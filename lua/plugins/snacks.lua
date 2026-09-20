@@ -128,6 +128,16 @@ return {
     --     the existing name intact to build on, not gone).
     --  3. Dotfiles/extensionless files (no real "extension" to protect)
     --     fall back to plain cursor-at-end of the whole name.
+    --  4. If the current name is a date slug (AG-autosave.lua's
+    --     auto-persist convention for brand-new buffers, YYYY-MM-DD_HHMMSS
+    --     or YYYY-MM-DD_HHMMSS_N — see AG-autosave.lua's unique_path()),
+    --     it carries no descriptive info, so the buffer's first line is
+    --     offered as the starting stem instead (still fully editable, same
+    --     as the name-intact behavior above) with characters illegal or
+    --     misleading in a filename swapped out: "/" (POSIX-illegal) and
+    --     ":" (Finder silently remaps this to "/" internally on
+    --     HFS+/APFS, so it's avoided too) become "-", other control
+    --     characters are dropped, and surrounding whitespace is trimmed.
     {
       "<Leader>fR",
       function()
@@ -139,12 +149,24 @@ return {
         local dir = vim.fn.fnamemodify(from, ":h")
         local basename = vim.fn.fnamemodify(from, ":t")
         local stem = basename:match("^(.-)%.[^.]*$")
+        local ext = stem and basename:sub(#stem + 1) or ""
 
-        local cursor_col = (stem and stem ~= "") and #stem or #basename
+        local default_stem = stem or basename
+        if default_stem:match("^%d%d%d%d%-%d%d%-%d%d_%d%d%d%d%d%d(_%d+)?$") then
+          local first_line = vim.api.nvim_buf_get_lines(0, 0, 1, false)[1] or ""
+          local candidate = first_line:gsub("[/:]", "-"):gsub("%c", "")
+          candidate = candidate:gsub("^%s+", ""):gsub("%s+$", "")
+          if candidate ~= "" then
+            default_stem = candidate
+          end
+        end
+        local default = default_stem .. ext
+
+        local cursor_col = #default_stem
 
         local win = Snacks.input({
           prompt = "New File Name",
-          default = basename,
+          default = default,
           win = {
             border = "rounded",
             title_pos = "center",
