@@ -46,7 +46,19 @@
 return {
   "echasnovski/mini.move",
   version = false,
-  event = { "BufReadPost", "BufNewFile" },
+  -- Eager (not event-lazy-loaded): a brand-new UNNAMED buffer — e.g. the
+  -- dashboard's "New File" (`:ene | startinsert`), or any scratch buffer
+  -- before it has a real path — fires neither BufReadPost (nothing was
+  -- read) nor BufNewFile (no filename involved), so `event = {
+  -- "BufReadPost", "BufNewFile" }` (the original setup) left Ctrl+h/j/k/l
+  -- silently unbound in exactly that situation (confirmed via headless
+  -- test 2026-09-22: reported as "Ctrl+j/k not working", reproduced only
+  -- in a fresh unnamed buffer, gone as soon as a real file was opened).
+  -- `lazy = false` matches snacks.nvim's own eager-load choice elsewhere
+  -- in this config for the same reason: a binding meant to always be
+  -- available can't depend on a buffer-specific event that might never
+  -- fire.
+  lazy = false,
   opts = {
     mappings = {
       -- Move Visual selection in Visual mode.
