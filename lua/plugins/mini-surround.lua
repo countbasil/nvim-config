@@ -29,6 +29,15 @@
 return {
   "echasnovski/mini.surround",
   version = false,
-  event = { "BufReadPost", "BufNewFile" },
+  -- Eager (not event-lazy-loaded): a brand-new UNNAMED buffer fires
+  -- neither BufReadPost nor BufNewFile (see mini-move.lua's identical
+  -- fix, 2026-09-22, for the full mechanism), so `event = {
+  -- "BufReadPost", "BufNewFile" }` left every sa/sd/sr/sf/sF/sh mapping
+  -- unbound there — confirmed via headless test 2026-09-23: `saiw)` in a
+  -- fresh unnamed buffer silently ran as plain `s` (substitute char)
+  -- instead, typing "aiw)" as literal replacement text. `s` being a real
+  -- Vim command on its own is what made this look like "s doesn't do
+  -- anything" rather than an obvious error.
+  lazy = false,
   opts = {},
 }

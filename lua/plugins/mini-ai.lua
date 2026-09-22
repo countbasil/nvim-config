@@ -23,7 +23,14 @@
 return {
   "echasnovski/mini.ai",
   version = false,
-  event = { "BufReadPost", "BufNewFile" },
+  -- Eager (not event-lazy-loaded): same reasoning as mini-move.lua and
+  -- mini-surround.lua (2026-09-22/23) — a brand-new unnamed buffer fires
+  -- neither BufReadPost nor BufNewFile, so the custom `is`/`as` sentence
+  -- object (the whole reason this plugin is installed) would silently
+  -- fall back to Vim's own built-in sentence object there instead of
+  -- erroring, which is an easy-to-miss soft failure rather than a loud
+  -- one.
+  lazy = false,
   opts = {
     custom_textobjects = {
       s = require("config.AG-newline-sentence-textobject").sentence,
