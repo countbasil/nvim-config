@@ -13,8 +13,8 @@ rationale for anything here: [CLAUDE.md](CLAUDE.md). Display-line history:
 | `j`/`k`/arrows (O) | — | **logical** line (unlike `0`/`$` above — `dj`/`d2k` act on real lines) |
 | `dd` | delete logical line | unchanged. `dr` = delete display row (new, no dot-repeat/count) |
 | `x` (N, V) | fills `""`/`"+` | never touches `""`/`"+`; always lands in `"-`, any size |
-| `s`, single-line `c` (N) | fills `""`/`"+` | same — skips `""`/`"+`, lands in `"-` |
-| `d`, multi-line `c` (any mode) | fills `""`/`"+` | **unchanged** — still the "real cut" keys |
+| `s`, `c` (any mode, any size) | fills `""`/`"+` | never touches `""`/`"+`; lands in `"-`/`"1` as Vim normally would |
+| `d` (any mode, any size) | fills `""`/`"+` | **unchanged** — the one "real cut" key |
 | `<CR>` (N) | — | split line at cursor, stay in Insert |
 | `<BS>` (N) | — | delete char before cursor, stay in Normal (`X`) |
 | `G` bare, no count (N, V) | last line, first non-blank | last line, **end of display line**. `{count}G` unchanged |

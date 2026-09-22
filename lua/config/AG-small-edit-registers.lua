@@ -8,12 +8,15 @@
 -- the default paste target (both in Neovim's `p` and via Cmd+V anywhere
 -- else on the Mac, since both ultimately read the same system clipboard).
 --
--- Goal: make `x`/`s`/single-line `c` stop touching ""/"+ at all, while
--- still landing in the small-delete register "- exactly as they always
--- have, so the content stays reachable via an explicit "-p when wanted.
--- Deliberately NOT applied to `d` (any size) or multi-line `c`: Aaron
--- wants those to keep populating the big register/clipboard regardless of
--- size — only the specific x/s/c "throwaway edit" keys should be silent.
+-- Goal: make `x`/`s`/`c` (any size) stop touching ""/"+ at all, while
+-- still landing in whatever register Vim's own delete/change logic would
+-- already have used ("- for a small edit, "1 for a linewise/multi-line
+-- one), so the content stays reachable there when wanted. Deliberately
+-- NOT applied to `d` (any size, any mode): Aaron wants `d` to remain the
+-- one key that's a "real cut" and keeps populating the big
+-- register/clipboard regardless of size — every OTHER delete/change key
+-- (`x`/`s`/`c`) is throwaway and should stay silent, however much it
+-- touches.
 --
 -- Why not a simple `"_x`/`"-x` register-prefix remap: Vim's documented
 -- rule is that "" is filled by a delete/change REGARDLESS of which
@@ -39,13 +42,16 @@
 -- `vim.v.event.operator` reports 'y'/'d'/'c'. Confirmed empirically
 -- (headless test, 2026-09-13) that `x` and a plain small `d` both report
 -- as 'd' (indistinguishable — hence `x` needs the direct-wrapper
--- treatment below instead), while `s` and `c` of any size both report as
--- 'c', distinctly from 'd' — exactly the split needed to leave `d` fully
--- untouched while catching `s`/small-`c`.
+-- treatment below instead), while `s` and `c` of ANY size report as 'c',
+-- distinctly from 'd' — exactly the split needed to leave `d` fully
+-- untouched while catching every `s`/`c`, small or not (broadened
+-- 2026-09-23 from "single-line `c` only" — Aaron wants `c` to be a
+-- throwaway key across the board, same as `x`, with `d` remaining the
+-- sole exception).
 --
 -- A shadow copy of "the last legitimate big-register value" (`last_big`)
 -- is kept up to date on every non-suppressed event and reapplied whenever
--- a small `c`/`s` event tries to overwrite ""/"+ with throwaway content.
+-- an `s`/`c` event tries to overwrite ""/"+ with throwaway content.
 
 local last_big
 
@@ -119,9 +125,8 @@ vim.api.nvim_create_autocmd('TextYankPost', {
     end
 
     local e = vim.v.event
-    local is_small_change = e.operator == 'c' and e.regtype == 'v' and #e.regcontents <= 1
 
-    if is_small_change then
+    if e.operator == 'c' then
       apply(last_big)
     else
       last_big = snapshot_current()
