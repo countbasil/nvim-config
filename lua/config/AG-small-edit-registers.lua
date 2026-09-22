@@ -80,6 +80,36 @@ vim.keymap.set('n', 'x', function()
   apply(snap)
 end, { desc = 'Delete char (small — does not touch ""/system clipboard)' })
 
+-- Visual-mode x (added 2026-09-22, at Aaron's explicit request): always
+-- "small" regardless of how much the selection actually spans — unlike
+-- everything else in this file, this one is NOT limited to genuinely
+-- tiny edits. The point isn't "x happens to be small", it's "x is the
+-- key for 'discard this, I don't want it as my next paste', however
+-- big the Visual selection was", with plain `d` left as the one that
+-- still means "this is a real cut, save it as usual".
+--
+-- Same operator=='d' ambiguity as Normal-mode x (Visual x and Visual d
+-- are literally the same delete operation as far as Vim's internals are
+-- concerned — Visual mode has no separate "delete one char" meaning for
+-- x the way Normal mode does), so this needs the same direct-wrapper
+-- treatment rather than the TextYankPost-based approach below.
+--
+-- Explicitly targets "- (rather than just running bare `x` and letting
+-- Vim's own routing decide) because Vim only auto-routes a delete into
+-- "- when it's small BY VIM'S definition (single line) — a multi-line
+-- Visual selection would otherwise land in "1 instead, which is exactly
+-- the case this mapping exists to redirect. An explicit register target
+-- still doesn't stop "" from also being set (only the black hole "_
+-- does — see the file-level comment above), hence the same
+-- snapshot/restore dance as Normal-mode x, not a plain `"-x` on its own.
+vim.keymap.set('v', 'x', function()
+  local snap = snapshot_current()
+  suppress_next_yankpost = true
+  vim.cmd('normal! "-x')
+  suppress_next_yankpost = false
+  apply(snap)
+end, { desc = 'Delete Visual selection (small — does not touch ""/system clipboard)' })
+
 vim.api.nvim_create_autocmd('TextYankPost', {
   group = vim.api.nvim_create_augroup('AGSmallEditRegisters', { clear = true }),
   callback = function()
